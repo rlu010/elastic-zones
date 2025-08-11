@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    container_name: es
+    networks:
+      - elastic
+    ports:
+      - '9200:9200'
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    environment:
+      - discovery.type=single-node
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 10s
+      retries: 4
+
+
+
+networks:
+  elastic:
+    driver: bridge

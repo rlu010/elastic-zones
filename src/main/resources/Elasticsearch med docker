@@ -1,0 +1,194 @@
+Elasticsearch med docker
+
+Man får en del nyttig info når man starter elastic podden.
+Blant annet passord, Sha fingerprint til sertifikatet, noe som heter 'enrollment-token'
+
+
+Så skal vi på java siden gjøre noe greier 
+Vi oppretter client-config 
+
+
+Elastic fungerer som ett REST-api  
+
+
+Starter Containerrenen 
+docker run -d --name es01 --net elastic -p 9200:9200 -it -m 2GB docker.elastic.co/elasticsearch/elasticsearch:9.0.0 
+
+Kopierer http-cert kan være greit 
+docker cp es01:/usr/share/elasticsearch/config/certs/http_ca.crt .
+
+docker logs 48e3b7c38d92 | grep -i -A20 -B8  'password'
+
+Få ut Sha-fingerprint
+openssl x509 -in http_ca.crt -noout -fingerprint -sha256
+
+Kjør kibana 
+docker run -d --name kib01 --net elastic -p 5601:5601 docker.elastic.co/kibana/kibana:9.0.0
+
+Sjekk loggene, trykk på linken
+docker logs  134daa9c5663
+
+Opprett API key
+Elastic search -> endpoints & api-keys -> create key
+
+
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Elasticsearch security features have been automatically configured!
+✅ Authentication is enabled and cluster connections are encrypted.
+
+ℹ️  Password for the elastic user (reset with `bin/elasticsearch-reset-password -u elastic`):
+  jMxHZVENBRJLzV7OwLoL
+
+ℹ️  HTTP CA certificate SHA-256 fingerprint:
+  281bb74f6ecbdeafe54eef84fed79c1aaca051685407f1b8d4c3e6de5719ea6b
+
+ℹ️  Configure Kibana to use this cluster:
+• Run Kibana and click the configuration link in the terminal when Kibana starts.
+• Copy the following enrollment token and paste it into Kibana in your browser (valid for the next 30 minutes):
+  eyJ2ZXIiOiI4LjE0LjAiLCJhZHIiOlsiMTcyLjE4LjAuMjo5MjAwIl0sImZnciI6IjI4MWJiNzRmNmVjYmRlYWZlNTRlZWY4NGZlZDc5YzFhYWNhMDUxNjg1NDA3ZjFiOGQ0YzNlNmRlNTcxOWVhNmIiLCJrZXkiOiJXbkNQakpjQmg3UEowclhQcWF6WDpFWkdSanpfVm53Tk5RTjN3b3M2UUdBIn0=
+
+ℹ️ Configure other nodes to join this cluster:
+• Copy the following enrollment token and start new Elasticsearch nodes with `bin/elasticsearch --enrollment-token <token>` (valid for the next 30 minutes):
+  eyJ2ZXIiOiI4LjE0LjAiLCJhZHIiOlsiMTcyLjE4LjAuMjo5MjAwIl0sImZnciI6IjI4MWJiNzRmNmVjYmRlYWZlNTRlZWY4NGZlZDc5YzFhYWNhMDUxNjg1NDA3ZjFiOGQ0YzNlNmRlNTcxOWVhNmIiLCJrZXkiOiJYSENQakpjQmg3UEowclhQcWF6WTp1TEVyd2tIMWdVbVBvX2ZEM2VzYzNRIn0=
+
+  If you're running in Docker, copy the enrollment token and run:
+  `docker run -e "ENROLLMENT_TOKEN=<token>" docker.elastic.co/elasticsearch/elasticsearch:9.0.0`
+
+
+  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-getting-started#maps-create
+
+
+  API-key aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw== 
+
+VIKTIG, lag en index
+
+curl -X PUT --cacert http_ca.crt https://localhost:9200/largezy \
+  -H 'Authorization: ApiKey NFZrRExKZ0JfUXp0YThFeGhKcVI6c1NveUJhWFFPOE0zcVdIcG9rZmdHZw==' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "mappings": {
+    "properties": {
+      "geometry": {
+        "type": "geo_shape"
+      },
+      "properties": {
+        "type": "object"
+      }
+    }
+  }
+}'
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+	-H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+	-H 'Content-Type: application/json' \
+	-d '{
+  "query": { "match" : { "name": "Danmark" } },
+  "_source": false,
+  "fields": [
+    "id",
+    "properties"
+  ]
+}'
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+	-H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+	-H 'Content-Type: application/json' \
+	-d '{
+  "query": { "match" : { "_id": "jHDIjJcBh7PJ0rXPe6xu" } },
+  "_source": false,
+  "fields": [
+    "id",
+    "properties"
+  ]
+}'
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+        -H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}}}'
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+        -H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}}}'
+
+-- Inkluderer bare ønskede felter, effektivt over nettet, men ikke den mest moderne måten
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+        -H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}},"_source":{"includes":["properties.name","properties.FID"]}}'
+
+
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+        -H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}},"_source":false,"fields":["properties.name","properties.FID"]}'
+
+curl -X POST --cacert http_ca.crt https://localhost:9200/ezy/_search \
+	-H 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \
+	-H 'Content-Type: application/json' \
+	-d '{
+  "query": { "match" : { "id": 0 } }}'
+
+
+
+
+curl --cacert http_ca.crt "https://localhost:9200/my-sones/_doc" \
+  -H "Content-Type: application/json" \
+  --header 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw==' \ 
+  --data-binary @EEZ_Denmark.geojson
+
+curl -X GET --cacert http_ca.crt https://localhost:9200/ezy/_search?pretty --header 'Authorization: ApiKey aUhDZGpKY0JoN1BKMHJYUEpLd3g6aGdiQ0gydXhmc0pqWkU4SEVYTTZ6Zw=='
+
+
+curl -X 'GET' \
+  'https://apps.fiskeridirektoratet.no/zonereg/api/v1/zones?latitude=57.3123&longitude=9.3123&buffer=120' \
+  -H 'accept: */*' \
+  -w "\nTotal time: %{time_total} seconds\n"
+
+
+
+curl -X 'GET' \
+  'https://apps.fiskeridirektoratet.no/zonereg/api/v1/zones?latitude=57.3123&longitude=9.3123&buffer=120' \
+  -H 'accept: */*' \
+  -w "\nTotal time: %{time_total} seconds\n
+
+
+{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}},"_source":false,"fields":["properties.name","properties.FID"]}
+
+
+{
+    "bool": {
+        "filter": {
+            "geo_shape": {
+                "geometry": {
+                    "relation": "contains",
+                    "shape": {
+                        "coordinates": [
+                            9.3013,
+                            57.3239
+                        ],
+                        "type": "point"
+                    }
+                }
+            }
+        },
+        "must": {
+            "match_all": {}
+        }
+    }
+}
+
+{"query":{"bool":{"filter":{"geo_shape":{"geometry":{"relation":"contains","shape":{"coordinates":[9.3013,57.3239],"type":"point"}}}},"must":{"match_all":{}}}},"_source":{"includes":["properties.name","properties.FID"]}}
+
+
+
+
+curl -X GET --cacert http_ca.crt https://localhost:9200/shiz/_mapping \
+  -H 'Authorization: ApiKey NFZrRExKZ0JfUXp0YThFeGhKcVI6c1NveUJhWFFPOE0zcVdIcG9rZmdHZw==' 
+
+
+
